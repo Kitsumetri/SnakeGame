@@ -10,11 +10,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 python src/main.py
 ```
-
-## Dependencies
-* python 3.1.*
-* pygame 2.5.0
-
 #### Windows
 ```
 git clone https://github.com/Kitsumetri/SnakeGame.git
@@ -24,7 +19,10 @@ venv\Scripts\activate.bat
 pip install -r requirements.txt
 python src/main.py
 ```
-
+## Dependencies
+* python 3.1.*
+* pygame 2.5.0
+  
 ## Control
 * **W** - Up
 * **A** - Left
