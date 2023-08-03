@@ -28,7 +28,7 @@ python src/main.py
 * **A** - Left
 * **S** - Down
 * **D** - Right
-* **Space** - start game in main window
+* **Space** - Start game in main window
   
 ## Features
 | Sprite   | Feature |
