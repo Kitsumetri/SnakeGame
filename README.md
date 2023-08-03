@@ -20,7 +20,7 @@ pip install -r requirements.txt
 python src/main.py
 ```
 ## Dependencies
-* python 3.1.*
+* python 3.1.1.*
 * pygame 2.5.0
   
 ## Control
