@@ -4,18 +4,19 @@ from typing import Tuple
 from pygame.math import Vector2 as vec2
 
 
-class Snake:
+class Snake(pg.sprite.Sprite):
     def __init__(self, game) -> None:
+        super().__init__()
         self.game = game
         self.size: int = game.HITBOX_SIZE
-        self.rect = pg.rect.Rect(0, 0, self.size - 2, self.size - 2)
-
-        self.rect.center = self.get_random_pos()
-        self.GREEN: Tuple = (0, 255, 0)
+        self.GREEN: pg.Color = pg.Color(0, 255, 0)
+        self.image = pg.Surface((self.size - 2, self.size - 2))
+        self.image.fill(self.GREEN)
+        self.rect = self.image.get_rect(center=self.get_random_pos())
 
         self.direction: pg.math.Vector2 = vec2(0, 0)
 
-        self.tick = 150
+        self.tick = self.game.start_speed
         self.time = 0
 
         self.length = 1
@@ -65,28 +66,17 @@ class Snake:
             self.length += 1
             self.game.apple.count += 1
 
-    def check_speed_food(self) -> None:
-        if self.game.snake.rect.center == self.game.blueberry.rect.center:
-            self.game.blueberry.rect.center = self.game.blueberry.get_random_pos()
-            self.tick -= 4
-            self.game.blueberry.count += 2
-
-    def check_lemon_eating(self) -> None:
-        if self.game.snake.rect.center == self.game.lemon.rect.center:
-            self.game.lemon.rect.center = self.game.lemon.get_random_pos()
-            if self.length > 1:
-                self.length -= 1
-
-    def check_boarders(self) -> None:
+    def check_boarders(self) -> bool:
         if self.rect.left < 0 or self.rect.right > self.game.WIDTH:
-            self.game.start_new_game()
+            return True
 
         if self.rect.top < 0 or self.rect.bottom > self.game.HEIGHT:
-            self.game.start_new_game()
+            return True
 
-    def check_tail_eating(self) -> None:
-        if len(self.body) != len(set([body.center for body in self.body])):
-            self.game.start_new_game()
+    def check_tail_eating(self) -> bool:
+        for body in self.body:
+            if self.body.count(body) > 1:
+                return True
 
     def move(self) -> None:
         if self.check_move():
@@ -95,24 +85,20 @@ class Snake:
             self.body: list[pg.Rect] = self.body[-self.length:]
 
     def update(self) -> None:
-        self.check_tail_eating()
         self.check_food()
-        self.check_speed_food()
-        self.check_boarders()
-        self.check_lemon_eating()
         self.move()
 
     def draw(self) -> None:
-        for hitbox in self.body:
-            pg.draw.rect(self.game.screen, self.GREEN, hitbox)
+        [self.game.screen.blit(self.image, hitbox) for hitbox in self.body]
 
 
 class Apple(pg.sprite.Sprite):
     def __init__(self, game) -> None:
-        pg.sprite.Sprite.__init__(self)
+        super().__init__()
         self.game = game
         self.size: int = game.HITBOX_SIZE
-        self.image: pg.surface.Surface = pg.image.load('sprites/apple_sprite.png').convert_alpha()
+        self.image: pg.surface.Surface = pg.Surface((50, 50))
+        self.image.fill(pg.Color(255, 0, 0))
         self.rect: pg.Rect = self.image.get_rect()
         self.count = 0
 
@@ -126,85 +112,16 @@ class Apple(pg.sprite.Sprite):
                                stop=self.game.HEIGHT - self.size // 2,
                                step=self.size)
 
-        while (pos_x, pos_y) in self.game.snake.body:
-            pos_x: int = randrange(start=self.size // 2,
-                                   stop=self.game.WIDTH - self.size // 2,
-                                   step=self.size)
-            pos_y: int = randrange(start=self.size // 2,
-                                   stop=self.game.HEIGHT - self.size // 2,
-                                   step=self.size)
+        for body in self.game.snake.body:
+            while ((pos_x, pos_y) == body.center or
+                   (pos_x, pos_y) == self.game.apple.rect.center):
+                pos_x: int = randrange(start=self.size // 2,
+                                       stop=self.game.WIDTH - self.size // 2,
+                                       step=self.size)
+                pos_y: int = randrange(start=self.size // 2,
+                                       stop=self.game.HEIGHT - self.size // 2,
+                                       step=self.size)
         return pos_x, pos_y
-
-    def update(self) -> None: pass
-
-    def draw(self) -> None:
-        self.game.screen.blit(self.image, self.rect)
-
-
-class Blueberry(pg.sprite.Sprite):
-    def __init__(self, game) -> None:
-        pg.sprite.Sprite.__init__(self)
-        self.game = game
-        self.size: int = game.HITBOX_SIZE
-        self.image: pg.surface.Surface = pg.image.load('sprites/blueberry_sprite.png').convert_alpha()
-        self.rect: pg.Rect = self.image.get_rect()
-
-        self.rect.center = self.get_random_pos()
-
-        self.count = 0
-
-    def get_random_pos(self) -> Tuple[int, int]:
-        pos_x: int = randrange(start=self.size // 2,
-                               stop=self.game.WIDTH - self.size // 2,
-                               step=self.size)
-        pos_y: int = randrange(start=self.size // 2,
-                               stop=self.game.HEIGHT - self.size // 2,
-                               step=self.size)
-
-        while (pos_x, pos_y) in self.game.snake.body:
-            pos_x: int = randrange(start=self.size // 2,
-                                   stop=self.game.WIDTH - self.size // 2,
-                                   step=self.size)
-            pos_y: int = randrange(start=self.size // 2,
-                                   stop=self.game.HEIGHT - self.size // 2,
-                                   step=self.size)
-        return pos_x, pos_y
-
-    def update(self) -> None: pass
-
-    def draw(self) -> None:
-        self.game.screen.blit(self.image, self.rect)
-
-
-class Lemon(pg.sprite.Sprite):
-    def __init__(self, game) -> None:
-        pg.sprite.Sprite.__init__(self)
-        self.game = game
-        self.size: int = game.HITBOX_SIZE
-        self.image: pg.surface.Surface = pg.image.load('sprites/lemon_sprite.png').convert_alpha()
-        self.rect: pg.Rect = self.image.get_rect()
-
-        self.rect.center = self.get_random_pos()
-        self.count = 0
-
-    def get_random_pos(self) -> Tuple[int, int]:
-        pos_x: int = randrange(start=self.size // 2,
-                               stop=self.game.WIDTH - self.size // 2,
-                               step=self.size)
-        pos_y: int = randrange(start=self.size // 2,
-                               stop=self.game.HEIGHT - self.size // 2,
-                               step=self.size)
-
-        while (pos_x, pos_y) in self.game.snake.body:
-            pos_x: int = randrange(start=self.size // 2,
-                                   stop=self.game.WIDTH - self.size // 2,
-                                   step=self.size)
-            pos_y: int = randrange(start=self.size // 2,
-                                   stop=self.game.HEIGHT - self.size // 2,
-                                   step=self.size)
-        return pos_x, pos_y
-
-    def update(self) -> None: pass
 
     def draw(self) -> None:
         self.game.screen.blit(self.image, self.rect)
