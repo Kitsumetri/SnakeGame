@@ -21,7 +21,7 @@ class GameEnv:
     BLACK: Final = pg.Color(0, 0, 0)
     GRAY: Final = pg.Color(50, 50, 50)
     BLOCK_SIZE: Final = 50
-    SPEED: Final = 250
+    SPEED: Final = 150
 
     def __init__(self) -> NoReturn:
         self.snake = None
@@ -32,8 +32,6 @@ class GameEnv:
         self.score = None
 
         self.epoch = None
-
-        self.move_history = list()
 
         pg.init()
         self.font = pg.font.Font(pg.font.get_default_font(), 25)
@@ -153,9 +151,6 @@ class GameEnv:
 
         self.head = Point(x, y)
 
-        self.move_history.append(self.head)
-        self.move_history = self.move_history[:-30]
-
         self.snake.insert(0, self.head)
 
     def draw(self) -> NoReturn:
@@ -181,4 +176,3 @@ class GameEnv:
     def update(self) -> NoReturn:
         self.draw()
         pg.display.flip()
-

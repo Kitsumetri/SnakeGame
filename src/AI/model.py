@@ -20,17 +20,23 @@ GAMMA = 0.1
 
 Losses = []
 
-class LinearQNet(nn.Module):
-    def __init__(self, inputSize, hiddenSize, outputSize):
+class QNet(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size):
         super().__init__()
-        layers = [nn.Linear(inputSize, hiddenSize), nn.ReLU(), nn.Linear(hiddenSize, outputSize)]
-        self.hidden_layers = nn.Sequential(*layers)
+
+        layers = [nn.Linear(input_size, hidden_sizes[0]), nn.ReLU()]
+
+        for i in range(1, len(hidden_sizes)):
+            layers.append(nn.Linear(hidden_sizes[i - 1], hidden_sizes[i]))
+            layers.append(nn.ReLU())
+
+        layers.append(nn.Linear(hidden_sizes[-1], output_size))
+
+        self.network = nn.Sequential(*layers)
 
     def forward(self, X):
-        out = self.hidden_layers(X)
-
+        out = self.network(X)
         return out
-
 
 class QTrainner:
     def __init__(self, model, lr, gamma):
@@ -39,14 +45,14 @@ class QTrainner:
         self.gamma = gamma
 
         self.optimizer = optim.Adam(model.parameters(), self.lr)
-        self.lossFunction = nn.MSELoss()
+        self.loss_function = nn.MSELoss()
 
-    def train_step(self, state, action, reward, newState, done):
+    def train_step(self, state, action, reward, new_state, done):
 
         states = torch.tensor(np.array(state), dtype=torch.float)
         actions = torch.tensor(np.array(action), dtype=torch.long)
         rewards = torch.tensor(np.array(reward), dtype=torch.float)
-        new_states = torch.tensor(np.array(newState), dtype=torch.float)
+        new_states = torch.tensor(np.array(new_state), dtype=torch.float)
 
         if len(states.shape) == 1:
             states = torch.unsqueeze(states, 0)
@@ -55,10 +61,9 @@ class QTrainner:
             rewards = torch.unsqueeze(rewards, 0)
             done = (done, )
 
-        # 1. predicted q values with current state
         prediction = self.model(states)
 
-        # Q_new = reward + gamma * max(next predicted q value)
+        # Q_new = reward + gamma * max(q)
         target = prediction.clone()
 
         for i in range(len(done)):
@@ -69,7 +74,7 @@ class QTrainner:
             target[i][torch.argmax(actions).item()] = Q_new
 
         self.optimizer.zero_grad()
-        loss = self.lossFunction(target, prediction)
+        loss = self.loss_function(target, prediction)
         Losses.append(loss)
         loss.backward()
 
@@ -82,7 +87,7 @@ class Agent:
         self.gamma = GAMMA
         self.memory = deque(maxlen=MAX_MEMORY)
 
-        self.model = LinearQNet(11, 256, 3)
+        self.model = QNet(11, [256, 128], 3)
         self.trainner = QTrainner(self.model, lr=LR, gamma=self.gamma)
 
     @staticmethod
@@ -165,8 +170,8 @@ class Agent:
         states, actions, rewards, nextStates, dones = zip(*sample_mem)
         self.trainner.train_step(states, actions, rewards, nextStates, dones)
 
-    def train_short_memory(self, state, action, reward, nextState, done):
-        self.trainner.train_step(state, action, reward, nextState, done)
+    def train_short_memory(self, state, action, reward, next_state, done):
+        self.trainner.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
         self.epsilon = 80 - self.numberOfGames
@@ -197,13 +202,13 @@ def train():
 
     while agent.numberOfGames < NUM_EPOCHS:
         game.epoch = agent.numberOfGames
-        oldState = agent.get_state(game)
-        finalMove = agent.get_action(oldState)
-        reward, done, score = game.play_step(finalMove)
-        newState = agent.get_state(game)
+        old_state = agent.get_state(game)
+        final_move = agent.get_action(old_state)
+        reward, done, score = game.play_step(final_move)
+        new_state = agent.get_state(game)
 
-        agent.train_short_memory(oldState, finalMove, reward, newState, done)
-        agent.remember(oldState, finalMove, reward, newState, done)
+        agent.train_short_memory(old_state, final_move, reward, new_state, done)
+        agent.remember(old_state, final_move, reward, new_state, done)
 
         if done:
             game.start_new_game()
@@ -228,7 +233,7 @@ def train():
 
 if __name__ == '__main__':
     train()
-    # summary(LinearQNet(11, 256, 3), (11, ), device='cpu')
+    # summary(QNet(11, [256, 128], 3), (11,), device='cpu')
     # print([x for x in LinearQNet(11, 256, 3).parameters()])
 
 
